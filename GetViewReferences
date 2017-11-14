@@ -1,0 +1,37 @@
+USE AdventureWorks2014
+GO
+
+create procedure [dbo].[GetViewReferences] (
+    @QualifiedView as varchar(255),
+    @RefCount as int output
+) as
+/*******************************************************************************************************************
+Author: Alex Fleming
+Create Date: 11-05-2017
+This stored procedure accepts a string that contains a qualified view or table and returns the number of references.
+Examples of valid parameters: 'Sales.vStoreWithContacts' or '[Sales].[vStoreWithContacts]'
+*******************************************************************************************************************/
+set nocount on;
+begin
+declare @DynamicSQL varchar(3000) = (
+    'select referenced_server_name,referenced_database_name,referenced_schema_name,referenced_entity_name,count(*)
+    from sys.dm_sql_referenced_entities(' + '''' + @QualifiedView + '''' + ',''object'') as RefEnt
+	   inner join sys.all_views as AllViews
+	   on RefEnt.referenced_id = AllViews.object_id
+    where RefEnt.referenced_class = 1
+    and RefEnt.referenced_minor_name is null
+    group by referenced_server_name,referenced_database_name,referenced_schema_name,referenced_entity_name;'
+);
+
+exec (@DynamicSQL);
+
+end;
+GO
+
+/*******************************************************************************************************************
+declare @RefCount int;
+exec dbo.GetViewReferences @QualifiedView = 'HumanResources.DuplicateEmployeeView', @RefCount = @RefCount output;
+
+--the parameter I used is a very simple view that I created that references HumanResources.vEmployee in its 
+--definition
+*******************************************************************************************************************/
