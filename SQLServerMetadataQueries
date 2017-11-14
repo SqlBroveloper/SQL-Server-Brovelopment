@@ -1,0 +1,41 @@
+/******************************************************************************
+Use metadata in AdventureWorks2014 to find out random, potentially useful things
+******************************************************************************/
+use AdventureWorks2014
+go
+--find all references to schemas, tables, and columns that contain the word "person"
+select s.name as 'SchemaName',o.name as 'TableName',c.name as 'ColumnName'
+from sys.schemas as s
+    inner join sys.all_objects as o
+    on s.schema_id = o.schema_id
+	   inner join sys.all_columns as c
+	   on c.object_id = o.object_id
+where c.name like '%person%'
+and o.type = 'U'
+order by SchemaName,TableName,ColumnName;
+
+--do the same for "BusinessEntityId"
+select s.name as 'SchemaName',o.name as 'TableName',c.name as 'ColumnName'
+from sys.schemas as s
+    inner join sys.all_objects as o
+    on s.schema_id = o.schema_id
+	   inner join sys.all_columns as c
+	   on c.object_id = o.object_id
+where c.name like 'BusinessEntityId'
+and o.type = 'U'
+order by SchemaName,TableName,ColumnName;
+
+--Now join two tables using BusinessEntityId
+select *
+from HumanResources.Employee as e
+    inner join Person.Person as p
+    on e.BusinessEntityID = p.BusinessEntityID
+order by p.BusinessEntityID;
+--hmm, it looks like PersonType "EM" stands for "Employee," but what does "SP" mean?
+
+select distinct p.PersonType,e.JobTitle
+from HumanResources.Employee as e
+    inner join Person.Person as p
+    on e.BusinessEntityID = p.BusinessEntityID
+order by p.BusinessEntityID;
+--looks like it could have something to do with all sales-related jobs
