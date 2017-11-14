@@ -1,0 +1,89 @@
+use AdventureWorks2014
+go
+
+create procedure dbo.FindNestedViews_v3 (@ViewRefCount as int output) as
+/*******************************************************************************************************************
+Author: Alex Fleming
+Create Date: 11-05-2017
+This stored procedure finds all of the views in the current database, stores them in a temp table, then passes them 
+as parameters into the dbo.GetViewReferences stored procedure and stores the results in a new table.
+*******************************************************************************************************************/
+set nocount on;
+begin
+
+    if object_id ('[tempdb]..[#SchemaViewTemp]') is not null
+	   drop table #SchemaViewTemp;
+	   
+    create table #SchemaViewTemp
+    (  
+	   SVID int identity(1,1) NOT NULL primary key,
+	   SchemaViewString varchar(2000) NULL,
+	   RefCount int null
+    );  
+
+    insert into #SchemaViewTemp (SchemaViewString)
+    select s.name + '.' + v.name as 'SchemaViewString'
+    from sys.all_views as v
+	   inner join sys.schemas as s
+	   on v.schema_id = s.schema_id
+    where v.object_id > 0
+    order by SchemaViewString;
+
+    if object_id ('[tempdb]..[#ViewReferences]') is not null
+	   drop table #ViewReferences;
+
+--this table stores the output of the insert/exec statement
+--(can't use the same table because there is no way of updating based on an exec statement)
+    create table #ViewReferences
+    (  
+	   RefID int identity(1,1) not null primary key,
+	   RefCount int null
+    );  
+
+    declare @UpdateStmt varchar(500);
+    declare @cnt as int = 0;
+    declare @ViewString as nvarchar(255);
+    declare NestedViewReader cursor for
+	   select SchemaViewString
+	   from #SchemaViewTemp;
+    
+    open NestedViewReader;
+    	   fetch next from NestedViewReader
+		  into @ViewString
+	   while @@FETCH_STATUS = 0
+		  begin
+			 insert into #ViewReferences (RefCount)
+			 exec @ViewRefCount = dbo.CountObjectReferences
+				@QualifiedView = @ViewString, @RefCount = @ViewRefCount output;
+
+			 set @UpdateStmt = (
+				'update #SchemaViewTemp 
+				set RefCount = ' + cast((select RefCount from #ViewReferences where RefID = @cnt + 1) as varchar(3)) +
+				' where SVID = 1 + ' + cast(@cnt as varchar(2)) + ';');
+
+			 print @UpdateStmt;--for troubleshooting
+
+			 exec (@UpdateStmt);
+
+			 set @cnt = @cnt + 1;
+
+			 fetch next from NestedViewReader
+				into @ViewString
+		  end
+    close NestedViewReader;
+    deallocate NestedViewReader;
+
+    drop table #ViewReferences;
+
+    select *
+    from #SchemaViewTemp 
+    where RefCount > 0
+    order by RefCount desc;
+
+end;
+
+go
+/********************************Test***********************************
+declare @ViewRefCount as int;
+exec dbo.FindNestedViews_v3 @ViewRefCount = @ViewRefCount output;
+************************************************************************/
