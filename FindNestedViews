@@ -6,7 +6,8 @@ create procedure dbo.FindNestedViews_v3 (@ViewRefCount as int output) as
 Author: Alex Fleming
 Create Date: 11-05-2017
 This stored procedure finds all of the views in the current database, stores them in a temp table, then passes them 
-as parameters into the dbo.GetViewReferences stored procedure and stores the results in a new table.
+as parameters into the dbo.GetViewReferences stored procedure and stores the results in a new temp table, which is
+then queried for all views containing one or more views in their definitions.
 *******************************************************************************************************************/
 set nocount on;
 begin
