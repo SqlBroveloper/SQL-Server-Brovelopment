@@ -1,0 +1,150 @@
+/**************************************************************************************************
+-----------------------------------------TABLE DEFINITIONS-----------------------------------------
+**************************************************************************************************/
+--parent table
+if object_id ('AdventureWorks2014.dbo.Employees') is not null
+drop table AdventureWorks2014.dbo.Employees;
+    create table AdventureWorks2014.dbo.Employees
+    (
+	   EmployeeId int identity(1,1) primary key,     
+	   FirstName varchar(50) not null,
+	   MiddleInitial varchar(3) null,
+	   LastName varchar(50) not null,
+	   employee_ssn char(10) null,
+	   TimeStamp varchar(50) default getdate()
+    );
+--child table
+if object_id ('AdventureWorks2014.dbo.Pensions') is not null
+drop table AdventureWorks2014.dbo.Pensions;
+    create table AdventureWorks2014.dbo.Pensions 
+    (
+	   PensionId int identity(1,1) primary key,
+	   employee_ssn char(10) not null,
+	   pen_year integer not null,
+	   month_cnt integer default 0 not null check (month_cnt between 0 and 12),
+	   earnings decimal(8,2) default 0.00 not null,
+	   EmployeeId int null,
+	   constraint FK_Pensions_Employees foreign key (EmployeeId)
+   		  references dbo.Employees (EmployeeId)
+	   on delete cascade
+	   on update cascade
+    );
+/***********************************************************************************************
+Insert Employees
+***********************************************************************************************/
+insert into AdventureWorks2014.dbo.Employees (FirstName,MiddleInitial,LastName)
+select top 6 p.FirstName,
+    left(p.MiddleName,1) + '.',
+    p.LastName
+from AdventureWorks2014.Person.Person as p
+    inner join AdventureWorks2014.HumanResources.Employee as e
+    on e.BusinessEntityID = p.BusinessEntityID
+where p.FirstName + left(p.MiddleName,1) + '.' + p.LastName not in(select emp.FirstName + left(emp.MiddleInitial,1) + '.' + emp.LastName from AdventureWorks2014.dbo.Employees as emp);
+/***********************************************************************************************
+Insert Pensions
+***********************************************************************************************/
+insert into dbo.Pensions (employee_ssn,pen_year,month_cnt,earnings) values ('708585333',2018,12,2879.23);
+insert into dbo.Pensions (employee_ssn,pen_year,month_cnt,earnings) values ('708585333',2017,12,1600.99);
+insert into dbo.Pensions (employee_ssn,pen_year,month_cnt,earnings) values ('708585333',2016,11,2080.64);
+insert into dbo.Pensions (employee_ssn,pen_year,month_cnt,earnings) values ('708585333',2015,10,1961.56);
+insert into dbo.Pensions (employee_ssn,pen_year,month_cnt,earnings) values ('708585333',2014,10,1690.99);
+insert into dbo.Pensions (employee_ssn,pen_year,month_cnt,earnings) values ('708585333',2013,8,164.99);
+insert into dbo.Pensions (employee_ssn,pen_year,month_cnt,earnings) values ('708585333',2012,3,162.66);
+
+insert into dbo.Pensions (employee_ssn,pen_year,month_cnt,earnings) values ('964385438',2018,5,2582.66);
+insert into dbo.Pensions (employee_ssn,pen_year,month_cnt,earnings) values ('964385438',2017,9,1630.66);
+insert into dbo.Pensions (employee_ssn,pen_year,month_cnt,earnings) values ('964385438',2016,9,1447.66);
+insert into dbo.Pensions (employee_ssn,pen_year,month_cnt,earnings) values ('964385438',2015,9,4648.66);
+insert into dbo.Pensions (employee_ssn,pen_year,month_cnt,earnings) values ('964385438',2014,10,5760.40);
+insert into dbo.Pensions (employee_ssn,pen_year,month_cnt,earnings) values ('964385438',2013,10,1664.66);
+insert into dbo.Pensions (employee_ssn,pen_year,month_cnt,earnings) values ('964385438',2012,12,3664.66);
+
+insert into dbo.Pensions (employee_ssn,pen_year,month_cnt,earnings) values ('142988637',2018,2,6682.52);
+insert into dbo.Pensions (employee_ssn,pen_year,month_cnt,earnings) values ('142988637',2017,1,2730.36);
+insert into dbo.Pensions (employee_ssn,pen_year,month_cnt,earnings) values ('142988637',2016,0,1487.62);
+insert into dbo.Pensions (employee_ssn,pen_year,month_cnt,earnings) values ('142988637',2015,3,1990.96);
+insert into dbo.Pensions (employee_ssn,pen_year,month_cnt,earnings) values ('142988637',2014,12,1960.50);
+insert into dbo.Pensions (employee_ssn,pen_year,month_cnt,earnings) values ('142988637',2013,12,9664.75);
+insert into dbo.Pensions (employee_ssn,pen_year,month_cnt,earnings) values ('142988637',2012,2,14.67);
+
+insert into dbo.Pensions (employee_ssn,pen_year,month_cnt,earnings) values ('218512003',2018,4,1879.23);
+insert into dbo.Pensions (employee_ssn,pen_year,month_cnt,earnings) values ('218512003',2017,10,1600.99);
+insert into dbo.Pensions (employee_ssn,pen_year,month_cnt,earnings) values ('218512003',2016,3,2080.64);
+insert into dbo.Pensions (employee_ssn,pen_year,month_cnt,earnings) values ('218512003',2015,12,1961.56);
+insert into dbo.Pensions (employee_ssn,pen_year,month_cnt,earnings) values ('218512003',2014,12,1690.99);
+insert into dbo.Pensions (employee_ssn,pen_year,month_cnt,earnings) values ('218512003',2013,4,1672.99);
+insert into dbo.Pensions (employee_ssn,pen_year,month_cnt,earnings) values ('218512003',2012,3,1642.66);
+
+insert into dbo.Pensions (employee_ssn,pen_year,month_cnt,earnings) values ('143617049',2018,5,1582.66);
+insert into dbo.Pensions (employee_ssn,pen_year,month_cnt,earnings) values ('143617049',2017,12,1630.66);
+insert into dbo.Pensions (employee_ssn,pen_year,month_cnt,earnings) values ('143617049',2016,7,1447.66);
+insert into dbo.Pensions (employee_ssn,pen_year,month_cnt,earnings) values ('143617049',2015,3,1648.66);
+insert into dbo.Pensions (employee_ssn,pen_year,month_cnt,earnings) values ('143617049',2014,4,1760.40);
+insert into dbo.Pensions (employee_ssn,pen_year,month_cnt,earnings) values ('143617049',2013,5,1664.66);
+insert into dbo.Pensions (employee_ssn,pen_year,month_cnt,earnings) values ('143617049',2012,0,1664.66);
+
+insert into dbo.Pensions (employee_ssn,pen_year,month_cnt,earnings) values ('373536921',2018,5,1682.52);
+insert into dbo.Pensions (employee_ssn,pen_year,month_cnt,earnings) values ('373536921',2017,12,2830.36);
+insert into dbo.Pensions (employee_ssn,pen_year,month_cnt,earnings) values ('373536921',2016,7,1447.62);
+insert into dbo.Pensions (employee_ssn,pen_year,month_cnt,earnings) values ('373536921',2015,8,1980.96);
+insert into dbo.Pensions (employee_ssn,pen_year,month_cnt,earnings) values ('373536921',2014,12,1960.50);
+insert into dbo.Pensions (employee_ssn,pen_year,month_cnt,earnings) values ('373536921',2013,12,2664.75);
+insert into dbo.Pensions (employee_ssn,pen_year,month_cnt,earnings) values ('373536921',2012,2,914.67);
+
+----associate pensions with employees via EmployeeId
+update dbo.Pensions
+set EmployeeId = 1
+where employee_ssn = '708585333';
+
+update dbo.Pensions
+set EmployeeId = 2
+where employee_ssn = '964385438';
+
+update dbo.Pensions
+set EmployeeId = 3
+where employee_ssn = '142988637';
+
+update dbo.Pensions
+set EmployeeId = 4
+where employee_ssn = '218512003';
+
+update dbo.Pensions
+set EmployeeId = 5
+where employee_ssn = '143617049';
+
+update dbo.Pensions
+set EmployeeId = 6
+where employee_ssn = '373536921';
+
+-----now associate employees with their pensions via employee_ssn
+update dbo.Employees
+set employee_ssn = (select distinct employee_ssn from dbo.Pensions where EmployeeId = 1)
+where EmployeeId = 1;
+
+update dbo.Employees
+set employee_ssn = (select distinct employee_ssn from dbo.Pensions where EmployeeId = 2)
+where EmployeeId = 2;
+
+update dbo.Employees
+set employee_ssn = (select distinct employee_ssn from dbo.Pensions where EmployeeId = 3)
+where EmployeeId = 3;
+
+update dbo.Employees
+set employee_ssn = (select distinct employee_ssn from dbo.Pensions where EmployeeId = 4)
+where EmployeeId = 4;
+
+update dbo.Employees
+set employee_ssn = (select distinct employee_ssn from dbo.Pensions where EmployeeId = 5)
+where EmployeeId = 5;
+
+update dbo.Employees
+set employee_ssn = (select distinct employee_ssn from dbo.Pensions where EmployeeId = 6)
+where EmployeeId = 6;
+/***********************************************************************************************
+Verify that test data has been successfully refreshed
+***********************************************************************************************/
+select *
+from dbo.Pensions;
+
+select *
+from dbo.Employees;

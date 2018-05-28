@@ -1,0 +1,83 @@
+alter procedure [dbo].[UpdateAllSSN_v2] as
+/*******************************************************************************
+Author: Alex Fleming
+Created On: 4/27/2018
+Description: Updates all social security numbers in the 
+    dbo.Employees and dbo.Pensions tables using a set-based solution by replacing the
+    middle 1/3 of the characters (total of 3 characters in this case, since 
+    the string length is 9) with the maximum 3-digit integer value out of all
+    current ssn's in the dbo.Pensions table.
+*******************************************************************************/
+set nocount on;
+begin
+    declare @counter int = 0;
+    declare @maxid int = (select max(EmployeeId) from AdventureWorks2014.dbo.Employees);
+    declare @MaxMidSSN int = (select max(cast(right(left(employee_ssn,(len(employee_ssn)/3)*2),len(employee_ssn)/3) as int)) as 'MaxMiddle3' from dbo.Pensions);
+
+    if object_id ('[tempdb]..[#tempPensions]') is not null
+    drop table [#tempPensions];
+    
+    create table [#tempPensions]
+    (  
+	   PensionId int identity(1,1) not null primary key,
+	   employee_ssn char(10) not null,
+	   pen_year integer not null,
+	   month_cnt integer default 0 not null check (month_cnt between 0 and 12),
+	   earnings decimal(8,2) default 0.00 not null,
+	   EmployeeId int null
+    );
+
+    if object_id ('[tempdb]..[#tempEmployees]') is not null
+    drop table [#tempEmployees];
+    
+    create table [#tempEmployees]
+    (
+	   EmployeeId int identity(1,1) not null primary key,     
+	   FirstName varchar(50) not null,
+	   MiddleInitial varchar(3) null,
+	   LastName varchar(50) not null,
+	   employee_ssn char(10) null,
+	   TimeStamp varchar(50) default getdate()
+    );
+
+    insert into #tempPensions (employee_ssn,pen_year,month_cnt,earnings,EmployeeId)
+    select replace(employee_ssn,right(left(employee_ssn,(len(employee_ssn)/3)*2),len(employee_ssn)/3),@MaxMidSSN),
+	   pen_year,
+	   month_cnt,
+	   earnings,
+	   EmployeeId
+    from AdventureWorks2014.dbo.Pensions
+    where EmployeeId <= @maxid;
+
+    insert into #tempEmployees (FirstName,MiddleInitial,LastName,employee_ssn)
+    select FirstName,
+	   MiddleInitial,
+	   LastName,
+	   (select p.employee_ssn from #tempPensions as p where e.EmployeeId = p.EmployeeId group by p.employee_ssn)
+    from AdventureWorks2014.dbo.Employees as e
+    where e.EmployeeId <= @maxid;
+
+    truncate table AdventureWorks2014.dbo.Pensions;
+    alter table AdventureWorks2014.dbo.Pensions drop constraint FK_Pensions_Employees;
+    truncate table AdventureWorks2014.dbo.Employees;
+    
+
+    insert into AdventureWorks2014.dbo.Pensions (employee_ssn,pen_year,month_cnt,earnings,EmployeeId)
+    select employee_ssn,pen_year,month_cnt,earnings,EmployeeId
+    from #tempPensions;
+
+    insert into AdventureWorks2014.dbo.Employees (FirstName,MiddleInitial,LastName,employee_ssn)
+    select FirstName,MiddleInitial,LastName,employee_ssn
+    from #tempEmployees;
+
+    alter table AdventureWorks2014.dbo.Pensions add constraint FK_Pensions_Employees foreign key (EmployeeId) references dbo.Employees (EmployeeId);
+
+    select *
+    from AdventureWorks2014.dbo.Pensions;
+
+    select *
+    from AdventureWorks2014.dbo.Employees;
+end;
+/************************************
+exec [dbo].[UpdateAllSSN_v2];
+************************************/
