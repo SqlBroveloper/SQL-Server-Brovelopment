@@ -1,0 +1,44 @@
+use AdventureWorks2014;
+go
+
+--find out all of the tables and views that contain both a 'database_id' column and either 'object_id' or 'principal_id' column:
+select o1.name,
+    c.name,
+    o1.type,
+    o2.*,
+    'select top 100 * from [' + o2.schemaname + '].[' + o2.tablename + '];' 
+from sys.all_objects as o1
+    inner join sys.all_columns as c
+    on c.object_id = o1.object_id
+	   inner join (
+		  select s.name as 'schemaname',
+			 o1.name as 'tablename',
+			 c.name as 'columnname',
+			 o1.type,
+			 s.schema_id,
+			 o1.object_id as 'tbl_object_id2',
+			 c.object_id as 'col_obj_id2'
+		  from sys.all_objects as o1
+			 inner join sys.schemas as s
+			 on s.schema_id = o1.schema_id
+				inner join sys.all_columns as c
+				on c.object_id = o1.object_id
+		  where o1.type in('U','V')
+		  and c.name in('object_id','principal_id') /***< change this line to define the group of columns in one set of tables/views >***/
+	   ) as o2
+	   on o1.object_id = o2.tbl_object_id2
+	   and o2.schema_id = o1.schema_id
+where o1.type in('U','V')
+and c.name = 'database_id' /***< change this line to define the other group of columns in one set of tables/views >***/
+order by o1.name,c.name,o1.type;
+
+--Run these for a quick view of the columns in each:
+select top 100 * from [sys].[dm_column_store_object_pool];
+select top 100 * from [sys].[dm_db_index_usage_stats];
+select top 100 * from [sys].[dm_db_missing_index_details];
+select top 100 * from [sys].[dm_exec_function_stats];
+select top 100 * from [sys].[dm_exec_procedure_stats];
+select top 100 * from [sys].[dm_exec_query_profiles];
+select top 100 * from [sys].[dm_exec_trigger_stats];
+select top 100 * from [sys].[dm_filestream_non_transacted_handles];
+select top 100 * from [sys].[dm_qn_subscriptions];
