@@ -1,0 +1,265 @@
+/*******************************************************************************************************************************
+Author: Alex Fleming
+Description:
+  Here are the T-SQL demo scripts for the SQL Server metadata presentation.
+	Execute some queries below to examine the differences between types of object catalog views.
+  AdventureWorks2014 is required.
+*******************************************************************************************************************************/
+use AdventureWorks2014;
+go
+
+/*
+The base view contains a subset of columns and a superset of rows.
+The derived view contains a superset of columns and a subset of rows.
+*/
+
+select count(object_id) from sys.all_objects;
+select count(distinct object_id) from sys.all_objects;
+select distinct type,type_desc from sys.all_objects;
+
+select count(object_id) from sys.objects;
+select count(distinct object_id) from sys.objects;
+select distinct type,type_desc from sys.objects;
+
+select distinct type,type_desc from sys.all_objects
+except
+select distinct type,type_desc from sys.objects;
+
+select o.object_id,c.name,o.name
+from sys.all_columns as c
+	inner join sys.all_objects as o
+	on c.object_id = o.object_id
+except
+select o.object_id,c.name,o.name
+from sys.columns as c
+	inner join sys.all_objects as o
+	on c.object_id = o.object_id;
+
+--NOTE: All object_id's are negative (system metadata)
+
+use AdventureWorks2014;
+go
+
+select type_desc
+from sys.all_objects
+except
+select type_desc
+from sys.objects;
+
+select * from sys.sysobjects; --don't use this!!! (for backwards compatibility only)
+
+
+use AdventureWorks2014;
+go
+
+/*******************************************************************************************************************************
+Author: Alex Fleming
+Demo #1 (SQL Server Metadata Presentation)
+Description:
+    Here's a useful variation of the metadata query that may help you quickly identify patterns based on 
+    a naming convention within a database by searching for tables and views based on common column names.
+    I created it to reduce dependence on third-party tools for understanding database objects and their relationships.
+*******************************************************************************************************************************/
+use Adventureworks2014;
+go
+
+    select o1.name,
+	   c.name,
+	   o1.type,
+	   o2.schemaname,
+	   o2.tablename,
+	   o2.columnname,
+	   o2.schema_id,
+	   o2.tbl_object_id2,
+	   o2.col_obj_id2,
+	   'select top 100 * from [' + o2.schemaname + '].[' + o2.tablename + '];' 
+    from sys.all_objects as o1
+	   inner join sys.all_columns as c
+	   on c.object_id = o1.object_id
+		  inner join (
+			 select s.name as 'schemaname',
+				o1.name as 'tablename',
+				c.name as 'columnname',
+				o1.type,
+				s.schema_id,
+				o1.object_id as 'tbl_object_id2',
+				c.object_id as 'col_obj_id2'
+			 from sys.all_objects as o1
+				inner join sys.schemas as s
+				on s.schema_id = o1.schema_id
+				    inner join sys.all_columns as c
+				    on c.object_id = o1.object_id
+			 where o1.type in('U','V')
+			 and c.name in('BusinessEntityID','ID') /***< change this line to define the group of columns in one set of tables/views >***/
+		  ) as o2
+		  on o1.object_id = o2.tbl_object_id2
+		  and o2.schema_id = o1.schema_id
+    where o1.type in('U','V')
+    and c.name = 'ProductID' /***< change this line to define the other group of columns in one set of tables/views >***/
+    order by o1.name,c.name,o1.type;
+
+	/*
+Now add index information:
+*/
+
+use AdventureWorks2014;
+go
+
+select [s].[name] as 'SchemaName',
+	[o].[name] as 'ObjectName',
+	[c].[name] as 'ColumnName',
+	[c].[column_id],
+	[o].[object_id],
+	[sub1].[ColFrequencyByName] as 'ColFrequencyByName',
+	[i].[name],
+	[i].[type],
+	[i].[type_desc],
+	[i].[index_id],
+	[i].[is_primary_key],
+	[i].[is_unique_constraint],
+	[i].[is_unique]
+from [sys].[schemas] as [s]
+	inner join [sys].[all_objects] as [o]
+	on [s].[schema_id] = [o].[schema_id]
+		inner join [sys].[all_columns] as [c]
+		on [c].[object_id] = [o].[object_id]
+			inner join (
+				select [c1].[name], count(distinct o1.name) as 'ColFrequencyByName'
+				from [sys].[all_columns] as [c1]
+					inner join [sys].[all_objects] as [o1]
+					on [c1].[object_id] = [o1].[object_id]
+				where o1.type = 'U'
+				group by [c1].[name]
+				having count(distinct o1.name) > 1
+			) as [sub1]
+			on [sub1].[name] = [c].[name]
+				inner join [sys].[indexes] as [i]
+				on [i].[object_id] = [o].[object_id]
+where [s].[schema_id] not in (3,4)
+order by [c].[name],
+	[s].[name],
+	[o].[name],
+	[i].[name];
+
+/*********************************************************************************************
+Primary Key, Constraint, and Index Queries
+https://stackoverflow.com/questions/6108697/get-a-list-of-all-primary-keys-in-a-database
+*********************************************************************************************/
+use AdventureWorks2014;
+go
+
+SELECT 
+    so.name 'Table Name',
+    c.name 'Column Name',
+    t.Name 'Data type',
+    c.max_length 'Max Length',
+    c.precision ,
+    c.scale ,
+    c.is_nullable,
+    ISNULL(i.is_primary_key, 0) 'Primary Key',
+	[i].[name],
+	[i].[type],
+	[i].[type_desc],
+	[i].[index_id],
+	[i].[is_unique_constraint],
+	[i].[is_unique]
+FROM    
+    sys.columns c
+INNER JOIN 
+    sys.types t ON c.user_type_id = t.user_type_id
+LEFT OUTER JOIN 
+    sys.index_columns ic ON ic.object_id = c.object_id AND ic.column_id = c.column_id
+LEFT OUTER JOIN 
+    sys.indexes i ON ic.object_id = i.object_id AND ic.index_id = i.index_id
+INNER JOIN 
+    sysobjects so ON c.object_id = so.id --replace sysobjects
+WHERE
+    i.is_primary_key = 1 and 
+    so.xtype = 'U'
+order by 'Table Name', 'Column Name';
+
+/***************************************************************************************************************
+Demo#2
+Description:
+	Three queries below return the exact same results, demonstrating multiple ways for filtering 
+	out system metadata while returning the metadata we need to use for the PowerShell script.
+***************************************************************************************************************/
+use AdventureWorks2014;
+go
+
+select 'exec sp_helptext ''' + s.name + '.' + p.name + ''';' as [ProcDefinitionSQL]
+from sys.schemas as s
+	inner join sys.procedures as p
+	on p.schema_id = s.schema_id
+where is_ms_shipped = 0;
+
+select 'exec sp_helptext ''' + s.name + '.' + p.name + ''';' as [ProcDefinitionSQL]
+from sys.schemas as s
+	inner join sys.procedures as p
+	on p.schema_id = s.schema_id
+where s.schema_id not in (3,4);
+
+select 'exec sp_helptext ''' + s.name + '.' + o.name + ''';' as [ProcDefinitionSQL]
+from sys.schemas as s
+	inner join sys.all_objects as o
+	on o.schema_id = s.schema_id
+where is_ms_shipped = 0
+and o.type ='P';
+
+/**************************************************************************************************************
+Run the sp_helptext command (output from above queries) for any stored procedures that you want to include
+in your DB Object Definitions file.
+**************************************************************************************************************/
+exec sp_helptext 'dbo.uspLogError';
+exec sp_helptext 'dbo.uspSearchCandidateResumes';
+exec sp_helptext 'dbo.sp_upgraddiagrams';
+exec sp_helptext 'dbo.sp_helpdiagrams';
+exec sp_helptext 'dbo.sp_helpdiagramdefinition';
+exec sp_helptext 'dbo.sp_creatediagram';
+exec sp_helptext 'dbo.sp_renamediagram';
+exec sp_helptext 'dbo.sp_alterdiagram';
+exec sp_helptext 'dbo.sp_dropdiagram';
+exec sp_helptext 'dbo.uspGetBillOfMaterials';
+exec sp_helptext 'dbo.uspGetEmployeeManagers';
+exec sp_helptext 'dbo.uspGetManagerEmployees';
+exec sp_helptext 'dbo.uspGetWhereUsedProductID';
+exec sp_helptext 'dbo.uspPrintError';
+exec sp_helptext 'HumanResources.uspUpdateEmployeePersonalInfo';
+exec sp_helptext 'HumanResources.uspUpdateEmployeeHireInfo';
+exec sp_helptext 'HumanResources.uspUpdateEmployeeLogin';
+
+/**************************************************************************************************************
+Use the query to help find relevant information on your execution plans.
+**************************************************************************************************************/
+use AdventureWorks2014;
+go
+
+select cp.bucketid,
+       cp.refcounts,
+       cp.usecounts,
+       cp.size_in_bytes,
+       cp.memory_object_address,
+       cp.cacheobjtype,
+       cp.objtype,
+       cp.plan_handle,
+       cp.pool_id,
+       cp.parent_plan_handle,
+       deqs.plan_handle,
+       deqs.query_hash,
+       deqs.query_plan_hash,
+       deqs.creation_time,
+       deqs.last_execution_time,
+       deqs.plan_generation_num,
+       dest.dbid,dest.text
+from sys.dm_exec_cached_plans as cp
+       inner join sys.dm_exec_query_stats AS deqs
+       on deqs.plan_handle = cp.plan_handle
+       CROSS APPLY sys.dm_exec_query_plan(deqs.plan_handle) AS deqp
+       CROSS APPLY sys.dm_exec_sql_text(deqs.plan_handle) AS dest
+where dest.text like '%sys.indexes%';
+
+/*************************************
+Demo#4 FindNestedViews_v4
+**************************************/
+declare @ViewRefCount int;
+exec [dbo].[FindNestedViews_v4] @DBName = 'AdventureWorks2014', @ViewRefCount = @ViewRefCount;
