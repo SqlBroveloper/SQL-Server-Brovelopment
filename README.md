@@ -1,2 +1,1 @@
-# SQL-Server-Brovelopment
-T-SQL
+T-SQL development scripts
